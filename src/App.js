@@ -71,6 +71,10 @@ function App() {
         setResult("Please start with early symptoms first. If you're experiencing fatigue or other serious symptoms, please consult a doctor immediately.");
         return;
       }
+      if (selectedSymptoms.length < 3) {
+        setResult("Please select at least 3 symptoms to proceed.");
+        return;
+      }
       setSelectedFevers(classified);
       const nextAvailableSymptoms = getAvailableSymptoms(classified, symptomCategories.middle);
       setAvailableSymptoms(nextAvailableSymptoms);
@@ -87,21 +91,29 @@ function App() {
       setStep(3);
     } else if (step === 3) {
       const classified = classifyFevers(selectedSymptoms, selectedFevers);
+      const step3Symptoms = selectedSymptoms.filter(symptom => 
+        symptomCategories.serious.includes(symptom)
+      );
+      
       if (Object.keys(classified).length === 0) {
         setResult("Based on previous symptoms. Please consult a doctor for proper diagnosis.");
       } else {
         const allSymptoms = selectedSymptoms;
-        // Sort fevers by number of matching symptoms and take top 3
         const sortedFevers = Object.keys(classified)
           .map(fever => ({
             name: fever,
             matchCount: getIntersection(classified[fever], allSymptoms).length
           }))
           .sort((a, b) => b.matchCount - a.matchCount)
-          .slice(0, 3)  // Take only top 3 fevers
+          .slice(0, 3)
           .map(fever => fever.name);
         
-        setResult(`You might be affected with: ${sortedFevers.join(", ")}. Please consult a doctor for proper diagnosis and blood test.`);
+        // Change result text based on whether step 3 symptoms were selected
+        const resultPrefix = step3Symptoms.length > 0 ? 
+          "You are affected with:" : 
+          "Possible fevers based on your symptoms:";
+        
+        setResult(`${resultPrefix} ${sortedFevers.join(", ")}. Please consult a doctor for proper diagnosis and blood test.`);
       }
     }
   };
@@ -168,13 +180,13 @@ function App() {
           ))}
         </div>
         <button className="submit-button" onClick={handleSubmit}>
-          {step === 3 ? 'Get Result' : 'Next Step'}
+          {step === 3 ? (getCurrentSymptoms().length === 0 ? 'Finish' : 'Get Result') : 'Next Step'}
         </button>
         {Object.keys(selectedFevers).length > 0 && (
           <div className="current-status">
             <h3>Current Classification:</h3>
             <details className="fever-dropdown">
-              <summary>Possible fevers: {Object.keys(selectedFevers).length}</summary>
+              <summary>{step === 3 ? `Effected fevers: ${Object.keys(selectedFevers).length}` : `Possible fevers: ${Object.keys(selectedFevers).length}`}</summary>
               <ul className="fever-list">
                 {Object.keys(selectedFevers).map(fever => (
                   <li key={fever}>{fever}</li>
@@ -182,6 +194,15 @@ function App() {
               </ul>
             </details>
           </div>
+        )}
+        {result && result.includes(":") && (
+          <>
+            <p><strong>{result.includes("affected") ? "Affected Fevers:" : "Possible Fevers:"}</strong></p>
+            <p style={{ color: '#d32f2f' }}>{result.split(":")[1].split(".")[0]}</p>
+            <p style={{ fontStyle: 'italic', marginTop: '10px' }}>
+              Please consult a doctor for proper diagnosis and blood test.
+            </p>
+          </>
         )}
       </div>
     </div>
